@@ -45,6 +45,11 @@ export type AssistantStatus = S['AssistantStatus']
 export type AssistantSkill = S['AssistantSkill']
 export type AssistantLanguage = S['AssistantLanguage']
 export type AssistantSkillId = NonNullable<S['AssistantRequest']['skill']>
+export type Plan = S['Plan']
+export type PlanPrice = S['PlanPrice']
+export type PlansResponse = S['PlansResponse']
+export type MyPlan = S['MyPlan']
+export type RedirectUrl = S['RedirectUrl']
 
 /** Opções da passkey prontas para `navigator.credentials.create/get` (depois de converter base64url). */
 export interface PasskeyOptions {

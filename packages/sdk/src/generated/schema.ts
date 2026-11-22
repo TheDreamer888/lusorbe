@@ -551,6 +551,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Checkout */
+        post: operations["billing_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/billing/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Plan */
+        get: operations["billing_my_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plans */
+        get: operations["billing_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Portal */
+        post: operations["billing_portal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/waitlist": {
         parameters: {
             query?: never;
@@ -893,6 +961,20 @@ export interface components {
              */
             step_up_valid_for: number;
         };
+        /** MyPlan */
+        MyPlan: {
+            /** Assistant Daily Limit */
+            assistant_daily_limit: number;
+            /** Can Manage */
+            can_manage: boolean;
+            /**
+             * Plan
+             * @enum {string}
+             */
+            plan: "free" | "pro";
+            /** Status */
+            status?: string | null;
+        };
         /** OAuthStartResponse */
         OAuthStartResponse: {
             /** Authorize Url */
@@ -932,6 +1014,38 @@ export interface components {
             users_total: number;
             /** Users With Passkey */
             users_with_passkey: number;
+        };
+        /** Plan */
+        Plan: {
+            /** Assistant Daily Limit */
+            assistant_daily_limit: number;
+            /** Available */
+            available: boolean;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "free" | "pro";
+            price?: components["schemas"]["PlanPrice"] | null;
+        };
+        /** PlanPrice */
+        PlanPrice: {
+            /**
+             * Amount
+             * @description Valor em cêntimos.
+             */
+            amount: number;
+            /** Currency */
+            currency: string;
+            /** Interval */
+            interval?: string | null;
+        };
+        /** PlansResponse */
+        PlansResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /** Plans */
+            plans: components["schemas"]["Plan"][];
         };
         /** Posture */
         Posture: {
@@ -987,6 +1101,11 @@ export interface components {
             ok: true;
             /** Remaining Codes */
             remaining_codes: number;
+        };
+        /** RedirectUrl */
+        RedirectUrl: {
+            /** Url */
+            url: string;
         };
         /** RoleInfo */
         RoleInfo: {
@@ -2044,6 +2163,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectUrl"];
+                };
+            };
+        };
+    };
+    billing_my_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyPlan"];
+                };
+            };
+        };
+    };
+    billing_plans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlansResponse"];
+                };
+            };
+        };
+    };
+    billing_portal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectUrl"];
                 };
             };
         };

@@ -1,0 +1,11 @@
+.plans { display: grid; gap: 16px; }
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.plan-card { display: flex; flex-direction: column; gap: 12px; }
+.plan-card h2 { margin: 0; font-size: 1.9rem; }
+.plan-card.pro { border-color: #b56f4b; }
+.plan-card.current { box-shadow: 0 0 0 2px #1f1d1a inset; }
+.plan-card .button { margin-top: auto; align-self: flex-start; }
+.plan-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; line-height: 1.5; }
+.plans-banner { margin: 0; padding: 12px 14px; border-radius: 12px; background: #f3efe9; }
+.plans-banner.ok { background: #e7f2ea; }
+.plan-card .subtle-tag { align-self: flex-start; }

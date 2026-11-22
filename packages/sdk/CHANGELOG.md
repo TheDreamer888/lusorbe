@@ -10,6 +10,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Versões: 
 - `assistant.send()` aceita `skill` (habilidade, ex.: `'matematica'`) e `language` (BCP 47).
   `AssistantStatus` traz `skills` e `languages`; novos tipos `AssistantSkill`, `AssistantLanguage` e `AssistantSkillId`.
 
+- `billing.plans()`, `billing.me()`, `billing.checkout()` e `billing.portal()`: planos Grátis e Pro com a Stripe.
+  Modelos `Plan`, `PlanPrice`, `PlansResponse`, `MyPlan` e `RedirectUrl`.
+
 ## [0.1.0] — 2026-11-17
 
 ### Adicionado

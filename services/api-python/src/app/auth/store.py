@@ -42,6 +42,9 @@ class UserRecord:
     # Administração (RBAC). Nunca vem do cliente: só o módulo admin altera isto.
     roles: set[str] = field(default_factory=set)
     suspended: bool = False
+    # Plano pago. Só o módulo billing altera isto, a partir de webhooks assinados pela Stripe.
+    plan: str = "free"
+    billing: dict | None = None  # {customer_id, subscription_id, status, updated_at}
     sessions_valid_after: float = 0.0  # tokens com iat anterior deixam de valer
     created_at: float = field(default_factory=time.time)
     last_login_at: float | None = None

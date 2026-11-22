@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 const LoginTab = lazy(() => import('./components/LoginTab'))
 const Assistant = lazy(() => import('./components/Assistant'))
+const Plans = lazy(() => import('./components/Plans'))
 import { inspectText, simulatePosition, exportEvents, ReviewError } from './lib/workspace'
 import type { Finding, LocalEvent } from './lib/workspace'
 import { LanguageSelect } from './i18n'
@@ -9,11 +10,11 @@ import { useI18n } from './i18n/context'
 import type { Messages } from './i18n/pt-PT'
 import './Workspace.css'
 
-type View = 'overview' | 'security' | 'markets' | 'intelligence' | 'assistant' | 'integrations' | 'education' | 'privacy' | 'account'
+type View = 'overview' | 'security' | 'markets' | 'intelligence' | 'assistant' | 'plans' | 'integrations' | 'education' | 'privacy' | 'account'
 type AreaId = Exclude<View, 'account'>
 const AREAS: { id: AreaId; icon: string }[] = [
   { id: 'overview', icon: 'grid' }, { id: 'security', icon: 'shield' }, { id: 'markets', icon: 'chart' },
-  { id: 'intelligence', icon: 'spark' }, { id: 'assistant', icon: 'chat' }, { id: 'integrations', icon: 'plug' },
+  { id: 'intelligence', icon: 'spark' }, { id: 'assistant', icon: 'chat' }, { id: 'plans', icon: 'star' }, { id: 'integrations', icon: 'plug' },
   { id: 'education', icon: 'book' }, { id: 'privacy', icon: 'lock' },
 ]
 const SOURCES = [
@@ -43,7 +44,7 @@ function Icon({ name, size = 20 }: { name: string; size?: number }) {
     chart: <path d="M3 3v18h18M6 15l4-5 4 3 6-8"/>, spark: <path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8Z"/>,
     plug: <path d="M9 3v5m6-5v5M6 8h12v3a6 6 0 0 1-12 0Zm6 9v5"/>, lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></>,
     book: <path d="M12 5v16M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2Z"/>, arrow: <path d="M5 12h14m-6-6 6 6-6 6"/>,
-    chat: <path d="M4 5h16v11H9l-5 4Z"/>,
+    chat: <path d="M4 5h16v11H9l-5 4Z"/>, star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>,
     search: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>, close: <path d="m6 6 12 12M6 18 18 6"/>,
   }
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] ?? paths['grid']}</svg>
@@ -52,7 +53,7 @@ function External({ href, children }: { href: string; children: ReactNode }) {
   const { m } = useI18n()
   return <a href={href} target="_blank" rel="noreferrer noopener">{children}<span className="sr-only">{m.common.external}</span></a>
 }
-function initialView(): View { const h = location.hash.slice(1); return [...AREAS.map(a => a.id), 'account'].includes(h) ? h as View : 'overview' }
+function initialView(): View { const h = location.hash.slice(1).split('?')[0] ?? ''; return [...AREAS.map(a => a.id), 'account'].includes(h) ? h as View : 'overview' }
 function Chart({ period }: { period: string }) {
   const { m } = useI18n()
   const points = period === '1S' ? '0,120 25,126 50,104 80,115 110,82 140,98 165,90 200,108 235,58 270,69 300,45 330,58 360,30 400,36 440,12 480,26 520,6' : period === '1M' ? '0,140 35,120 65,145 95,95 130,115 170,92 200,104 235,70 270,90 310,52 350,74 390,40 440,56 480,22 520,38' : '0,145 40,148 80,130 120,138 160,106 200,116 240,88 280,100 320,64 360,79 400,43 440,53 480,25 520,15'
@@ -116,6 +117,7 @@ export default function WorkspaceApp() {
       {view === 'integrations' && <><div className="integration-grid">{INTEGRATIONS.map(i => <article className="aegis-panel integration-card" key={i.id}><div className="panel-top"><span className="integration-symbol">{i.mark}</span><span className="subtle-tag">{i.id === 'assistant' ? m.integrations.withAccount : m.integrations.notConnected}</span></div><h2>{integrationName(i, m)}</h2><span className="card-kicker">{m.integrations[i.id].category}</span><p>{m.integrations[i.id].text}</p>{i.id === 'assistant' ? <button className="button button-outline" onClick={() => go('assistant')}>{m.integrations.openAssistant} <Icon name="arrow" size={16}/></button> : <button className="button button-outline" onClick={() => setDetail(i.id)}>{m.integrations.requirements} <Icon name="arrow" size={16}/></button>}</article>)}</div><div className="notice section-gap"><Icon name="lock"/><p>{m.integrations.notice}</p></div></>}
       {view === 'privacy' && <><div className="privacy-hero"><Icon name="lock" size={38}/><div><p className="eyebrow">{m.privacy.notPremium}</p><h2>{m.privacy.base}</h2><p>{m.privacy.baseText}</p></div></div><div className="two-columns"><section className="aegis-panel"><h2>{m.privacy.controls}</h2><div className="privacy-row"><div><h3>{m.privacy.localJournal}</h3><p>{m.privacy.localJournalHint}</p></div><input aria-label={m.privacy.toggleJournal} type="checkbox" checked={journal} onChange={e => setJournal(e.target.checked)}/></div><div className="privacy-row"><div><h3>{m.privacy.saved}</h3><p>{m.privacy.savedCount(events.length)}</p></div><button className="text-link" disabled={!events.length} onClick={download}>{m.privacy.export}</button></div><button className="button button-outline" onClick={() => { clear(); setEvents([]); setJournal(false); setToast(m.privacy.deletedAll) }}>{m.privacy.deleteAll}</button></section><section className="aegis-panel"><h2>{m.privacy.whatHappens}</h2><ul className="plain-list">{m.privacy.items.map(([title, text]) => <li key={title}><b>{title}</b><span>{text}</span></li>)}</ul><a className="text-link" href="/legal/privacy.html">{m.privacy.readPolicy}</a></section></div></>}
       {view === 'education' && <><div className="topic-list education-topics">{LESSONS.map(t => <button key={t} className={lesson === t ? 'selected' : ''} onClick={() => { setLesson(t); setQuiz('') }}>{m.education.lessons[t].name}<Icon name="arrow" size={16}/></button>)}</div><section className="aegis-panel lesson-panel"><p className="eyebrow">{m.education.kicker}</p><h2>{ls.name}</h2><p className="lesson-lead">{ls.lead}</p><p>{ls.text}</p><div className="quiz"><h3>{ls.question}</h3><button onClick={() => setQuiz('wrong')}>{ls.wrong}</button><button onClick={() => setQuiz('right')}>{ls.right}</button>{quiz && <p role="status">{quiz === 'right' ? m.education.correct : m.education.reconsider}</p>}</div></section></>}
+      {view === 'plans' && <Suspense fallback={<p role="status">{m.common.loading}</p>}><Plans onSignIn={() => go('account')}/></Suspense>}
       {view === 'assistant' && <Suspense fallback={<p role="status">{m.common.loadingAssistant}</p>}><Assistant onSignIn={() => go('account')}/></Suspense>}
       {view === 'account' &&<section className="aegis-panel account-panel"><Suspense fallback={<p role="status">{m.common.loadingAccess}</p>}><LoginTab/></Suspense></section>}
       <footer className="workspace-footer"><span><b>Λ</b> LUSORBE <i>/</i> {m.shell.footer}</span><div><button onClick={() => go('privacy')}>{m.areas.privacy.label}</button><a href="/legal/terms.html" title={m.shell.legalNote}>{m.shell.terms}</a><span>{m.shell.noTracking}</span></div></footer>
