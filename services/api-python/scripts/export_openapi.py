@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT.parents[1] / "packages" / "sdk" / "openapi.json"
-SDK_TAGS = {"auth", "waitlist", "admin", "assistant"}
+SDK_TAGS = {"auth", "waitlist", "admin", "assistant", "billing"}
 
 
 def build_spec() -> dict:

@@ -105,6 +105,12 @@
             <td>Consentimento (alínea a): só é usado depois de marcares a caixa de aceitação no assistente. Podes deixar de o usar a qualquer momento.</td>
             <td>A Lusorbe não guarda a conversa: fica só na página aberta e desaparece ao fechá-la ou ao começar uma nova. Guardamos apenas contadores de utilização (até 24 horas). Na Anthropic: <span class="todo">prazo de retenção segundo o contrato da API</span>.</td>
           </tr>
+          <tr id="pagamentos">
+            <td><strong>Plano Pro (opcional):</strong> o email da conta (enviado à Stripe para o pagamento) e, do lado da Lusorbe, só o identificador de cliente e de subscrição da Stripe, o estado da subscrição e o plano. Os dados do cartão são introduzidos na página da Stripe e nunca chegam à Lusorbe.</td>
+            <td>Cobrar a subscrição, ativar o Pro e permitir que a canceles.</td>
+            <td>Execução do contrato (alínea b) e obrigações legais de faturação (alínea c).</td>
+            <td>Enquanto a subscrição existir e, depois, o tempo que a lei fiscal exige para os registos de faturação. <span class="todo">prazo de conservação fiscal</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -117,6 +123,7 @@
       <li><strong>Serviço de login que escolheres</strong> (Google, Microsoft, GitHub, GitLab, Apple, Discord): fica a saber que entraste na Lusorbe, segundo a política dele.</li>
       <li><strong>Alojamento da API e da base de dados:</strong> <span class="todo">nome do fornecedor e país</span>.</li>
       <li><strong>Anthropic, EUA:</strong> só se usares o assistente. Recebe o texto da conversa para gerar a resposta, como subcontratante.</li>
+      <li><strong>Stripe:</strong> só se subscreveres o Pro. Processa o pagamento e guarda os dados do cartão, segundo a política de privacidade dela. <span class="todo">entidade da Stripe contratante e país</span></li>
     </ul>
     <p>
       Quando há transferência para fora do Espaço Económico Europeu, ela assenta numa decisão de adequação

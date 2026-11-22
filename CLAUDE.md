@@ -76,6 +76,9 @@ poetry run uvicorn src.app.main:app --reload   # http://localhost:8000
 - `assistant.py` — Claude via SDK `anthropic`; desligado sem `ANTHROPIC_API_KEY`;
   exige sessão, Origin e `consent: true`; limites por conta; não guarda conversas.
   Nos testes injeta um cliente falso com `set_client()`.
+- `billing.py` — planos Grátis/Pro com a Stripe (SDK `stripe`). O plano só muda por
+  webhook assinado (`STRIPE_WEBHOOK_SECRET`), relendo a subscrição na Stripe; nunca
+  pelo cliente. Nos testes injeta um cliente falso com `set_client()`.
 - `config.py` — `Settings` e `redact()`: usa-o antes de registar corpos de pedidos.
 - `/api/protect/risk-score` é uma heurística por hash, **não** um modelo: não a
   apresentes como deteção real.

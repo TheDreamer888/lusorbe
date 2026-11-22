@@ -7,6 +7,7 @@ from src.app.auth.routes import router as auth_router
 from src.app.admin.routes import router as admin_router
 from src.app.waitlist import router as waitlist_router
 from src.app.assistant import router as assistant_router
+from src.app.billing import router as billing_router
 from src.ml.model import RiskModel
 from src.pylibrary.logging import get_logger
 
@@ -55,6 +56,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(waitlist_router)
 app.include_router(assistant_router)
+app.include_router(billing_router)
 
 risk_model = RiskModel()
 

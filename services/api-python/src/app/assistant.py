@@ -4,8 +4,9 @@ Regras que este módulo garante:
 
 * **Só com conta.** Cada pedido exige sessão válida (conta não suspensa) e
   Origin da própria app: ninguém gasta créditos de IA sem login.
-* **Limites por conta.** ``ASSISTANT_DAILY_LIMIT`` mensagens por dia (30 por
-  omissão) e uma rajada máxima por minuto. O limite usa o mesmo limitador do
+* **Limites por conta.** ``ASSISTANT_DAILY_LIMIT`` mensagens por dia no plano
+  Grátis (30 por omissão), ``ASSISTANT_PRO_DAILY_LIMIT`` no Pro (300; ver
+  ``billing.py``) e uma rajada máxima por minuto. O limite usa o mesmo limitador do
   login (Redis em produção), por isso vale entre instâncias.
 * **Consentimento explícito.** O pedido tem de levar ``consent: true``: a pessoa
   aceitou que o texto da conversa é enviado à Anthropic para gerar a resposta.
@@ -29,6 +30,7 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
+from src.app import billing
 from src.app.auth import routes as auth_routes
 from src.app.auth.store import UserRecord
 from src.pylibrary.logging import get_logger
@@ -160,8 +162,8 @@ def _enabled() -> bool:
     return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
 
 
-def _daily_limit() -> int:
-    return max(1, int(os.getenv("ASSISTANT_DAILY_LIMIT", "30")))
+def _daily_limit(user: UserRecord) -> int:
+    return billing.assistant_daily_limit(user)
 
 
 def _model() -> str:
@@ -249,7 +251,7 @@ def _limit(user: UserRecord) -> None:
     retry = limiter.hit(f"assistant:burst:{user.id}", limit=6, window_seconds=60)
     if retry is not None:
         raise HTTPException(429, "Estás a enviar mensagens depressa demais. Espera um pouco.", headers={"Retry-After": str(retry)})
-    daily = _daily_limit()
+    daily = _daily_limit(user)
     retry = limiter.hit(f"assistant:day:{user.id}", limit=daily, window_seconds=86400)
     if retry is not None:
         raise HTTPException(
@@ -266,7 +268,7 @@ def _limit(user: UserRecord) -> None:
 def status(user: UserRecord = Depends(auth_routes._require_user)) -> AssistantStatus:
     return AssistantStatus(
         enabled=_enabled(),
-        daily_limit=_daily_limit(),
+        daily_limit=_daily_limit(user),
         model=_model(),
         data_notice=DATA_NOTICE,
         skills=[AssistantSkill(id=k, name=v["name"], description=v["description"]) for k, v in SKILLS.items()],

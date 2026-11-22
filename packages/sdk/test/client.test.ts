@@ -246,3 +246,28 @@ describe('assistant', () => {
     assert.equal(err.retryAfterSeconds, 120)
   })
 })
+
+describe('billing', () => {
+  it('devolve o endereço do checkout e não repete o POST num 503', async () => {
+    const { fn, calls } = fakeFetch([json(503, { detail: 'Os pagamentos ainda não estão disponíveis.' })])
+    await assert.rejects(client(fn).billing.checkout(), ServerError)
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0]!.url.pathname, '/api/billing/checkout')
+    assert.equal(calls[0]!.init.method, 'POST')
+
+    const ok = fakeFetch([json(200, { url: 'https://checkout.stripe.com/c/pay/cs_test_1' })])
+    assert.deepEqual(await client(ok.fn).billing.checkout(), { url: 'https://checkout.stripe.com/c/pay/cs_test_1' })
+  })
+
+  it('uma conta que já é Pro dá ConflictError', async () => {
+    const { fn } = fakeFetch([json(409, { detail: 'Esta conta já tem o plano Pro.' })])
+    await assert.rejects(client(fn).billing.checkout(), ConflictError)
+  })
+
+  it('lê os planos sem sessão', async () => {
+    const plans = { enabled: true, plans: [{ id: 'free', assistant_daily_limit: 30, price: { amount: 0, currency: 'eur', interval: null }, available: true }] }
+    const { fn, calls } = fakeFetch([json(200, plans)])
+    assert.deepEqual(await client(fn).billing.plans(), plans)
+    assert.equal(calls[0]!.url.pathname, '/api/billing/plans')
+  })
+})

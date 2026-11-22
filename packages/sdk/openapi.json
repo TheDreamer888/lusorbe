@@ -766,6 +766,44 @@
         "title": "Me",
         "type": "object"
       },
+      "MyPlan": {
+        "properties": {
+          "assistant_daily_limit": {
+            "title": "Assistant Daily Limit",
+            "type": "integer"
+          },
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
+          "plan": {
+            "enum": [
+              "free",
+              "pro"
+            ],
+            "title": "Plan",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "plan",
+          "can_manage",
+          "assistant_daily_limit"
+        ],
+        "title": "MyPlan",
+        "type": "object"
+      },
       "OAuthStartResponse": {
         "properties": {
           "authorize_url": {
@@ -857,6 +895,94 @@
           "recent"
         ],
         "title": "Overview",
+        "type": "object"
+      },
+      "Plan": {
+        "properties": {
+          "assistant_daily_limit": {
+            "title": "Assistant Daily Limit",
+            "type": "integer"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "id": {
+            "enum": [
+              "free",
+              "pro"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanPrice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "assistant_daily_limit",
+          "available"
+        ],
+        "title": "Plan",
+        "type": "object"
+      },
+      "PlanPrice": {
+        "properties": {
+          "amount": {
+            "description": "Valor em cêntimos.",
+            "title": "Amount",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "PlanPrice",
+        "type": "object"
+      },
+      "PlansResponse": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "plans"
+        ],
+        "title": "PlansResponse",
         "type": "object"
       },
       "Posture": {
@@ -1003,6 +1129,19 @@
           "remaining_codes"
         ],
         "title": "RedeemResult",
+        "type": "object"
+      },
+      "RedirectUrl": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "RedirectUrl",
         "type": "object"
       },
       "RoleInfo": {
@@ -2665,6 +2804,90 @@
         "summary": "Webauthn Register Verify",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/billing/checkout": {
+      "post": {
+        "operationId": "billing_checkout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Checkout",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/me": {
+      "get": {
+        "operationId": "billing_my_plan",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Plan",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/plans": {
+      "get": {
+        "operationId": "billing_plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlansResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plans",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/portal": {
+      "post": {
+        "operationId": "billing_portal",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Portal",
+        "tags": [
+          "billing"
         ]
       }
     },
