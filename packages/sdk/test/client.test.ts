@@ -271,3 +271,43 @@ describe('billing', () => {
     assert.equal(calls[0]!.url.pathname, '/api/billing/plans')
   })
 })
+describe('assistant.stream', () => {
+  const sse = (body: string, status = 200) =>
+    new Response(body, { status, headers: { 'content-type': 'text/event-stream' } })
+
+  it('devolve os pedaços e o fim, mesmo partidos a meio de um evento', async () => {
+    const text = 'event: delta\ndata: {"text":"Olá"}\n\nevent: delta\ndata: {"text":", mundo"}\n\nevent: done\ndata: {"refused":false,"truncated":false}\n\n'
+    // Corta o corpo em bocados de 7 bytes para provar que o parser junta eventos partidos.
+    const bytes = new TextEncoder().encode(text)
+    const body = new ReadableStream<Uint8Array>({
+      start(c) { for (let i = 0; i < bytes.length; i += 7) c.enqueue(bytes.slice(i, i + 7)); c.close() },
+    })
+    const calls: { url: URL; init: RequestInit }[] = []
+    const fn = (async (url: URL, init: RequestInit) => { calls.push({ url, init }); return new Response(body, { status: 200 }) }) as unknown as typeof fetch
+    const out = []
+    for await (const ev of client(fn).assistant.stream({ messages: [{ role: 'user', content: 'Olá' }], consent: true })) out.push(ev)
+    assert.deepEqual(out, [
+      { type: 'delta', text: 'Olá' },
+      { type: 'delta', text: ', mundo' },
+      { type: 'done', refused: false, truncated: false },
+    ])
+    assert.equal(calls[0]!.url.pathname, '/api/assistant/messages/stream')
+    assert.equal((calls[0]!.init.headers as Record<string, string>).Accept, 'text/event-stream')
+  })
+
+  it('um erro a meio lança ServerError', async () => {
+    const fn = (async () => sse('event: delta\ndata: {"text":"a"}\n\nevent: error\ndata: {"detail":"falhou"}\n\n')) as unknown as typeof fetch
+    const got: string[] = []
+    await assert.rejects(async () => {
+      for await (const ev of client(fn).assistant.stream({ messages: [{ role: 'user', content: 'x' }], consent: true })) if (ev.type === 'delta') got.push(ev.text)
+    }, ServerError)
+    assert.deepEqual(got, ['a'])
+  })
+
+  it('uma resposta cortada sem "done" lança ConnectionError', async () => {
+    const fn = (async () => sse('event: delta\ndata: {"text":"a"}\n\n')) as unknown as typeof fetch
+    await assert.rejects(async () => {
+      for await (const _ of client(fn).assistant.stream({ messages: [{ role: 'user', content: 'x' }], consent: true })) { /* consome */ }
+    }, ConnectionError)
+  })
+})

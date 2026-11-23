@@ -23,11 +23,13 @@ Regras que este módulo garante:
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from typing import Any, Literal
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from src.app import billing
@@ -276,12 +278,13 @@ def status(user: UserRecord = Depends(auth_routes._require_user)) -> AssistantSt
     )
 
 
-@router.post("/messages", response_model=AssistantReply, dependencies=[Depends(auth_routes._require_same_origin)])
-def send_message(
-    body: AssistantRequest,
-    request: Request,
-    user: UserRecord = Depends(auth_routes._require_user),
-) -> AssistantReply:
+REFUSAL_TEXT = "Não posso ajudar com esse pedido. Se precisas de ajuda com segurança, dinheiro ou estudo, reformula e eu ajudo."
+TRUNCATED_NOTE = "\n\n(A resposta foi cortada por ser longa. Pede-me para continuar.)"
+FAILED = "O assistente não conseguiu responder. Tenta de novo."
+
+
+def _start(body: AssistantRequest, user: UserRecord) -> dict[str, Any]:
+    """Verifica se está ligado, gasta a quota e devolve os parâmetros do pedido ao modelo."""
     if not _enabled():
         raise HTTPException(503, "O assistente não está disponível neste momento.")
     _limit(user)
@@ -292,40 +295,110 @@ def send_message(
     if body.skill == "matematica":
         reasoning["thinking"] = {"type": "adaptive"}
         effort = os.getenv("ASSISTANT_MATH_EFFORT", "high")
+    return dict(
+        model=_model(),
+        max_tokens=16000,
+        system=_system_blocks(body.skill, body.language),
+        messages=[{"role": m.role, "content": m.content} for m in body.messages],
+        output_config={"effort": effort},
+        **reasoning,
+        # Se o modelo principal recusar por precaução, a API tenta um modelo alternativo.
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+        # Identificador opaco (hash): a Anthropic pode detetar abusos sem saber quem é.
+        metadata={"user_id": hashlib.sha256(user.id.encode()).hexdigest()},
+    )
 
-    try:
-        response = get_client().beta.messages.create(
-            model=_model(),
-            max_tokens=16000,
-            system=_system_blocks(body.skill, body.language),
-            messages=[{"role": m.role, "content": m.content} for m in body.messages],
-            output_config={"effort": effort},
-            **reasoning,
-            # Se o modelo principal recusar por precaução, a API tenta um modelo alternativo.
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-            # Identificador opaco (hash): a Anthropic pode detetar abusos sem saber quem é.
-            metadata={"user_id": hashlib.sha256(user.id.encode()).hexdigest()},
-        )
-    except anthropic.RateLimitError:
+
+def _provider_error(exc: Exception) -> HTTPException:
+    """Traduz um erro da Anthropic num erro HTTP sem detalhes internos."""
+    if isinstance(exc, anthropic.RateLimitError):
         logger.warning("assistant: limite do fornecedor atingido")
-        raise HTTPException(503, "O assistente está ocupado. Tenta daqui a pouco.", headers={"Retry-After": "30"})
-    except anthropic.APIStatusError as exc:
+        return HTTPException(503, "O assistente está ocupado. Tenta daqui a pouco.", headers={"Retry-After": "30"})
+    if isinstance(exc, anthropic.APIStatusError):
         logger.error(f"assistant: erro do fornecedor {exc.status_code}")
-        raise HTTPException(502, "O assistente não conseguiu responder. Tenta de novo.")
-    except anthropic.APIConnectionError:
+    else:
         logger.error("assistant: sem ligação ao fornecedor")
-        raise HTTPException(502, "O assistente não conseguiu responder. Tenta de novo.")
+    return HTTPException(502, FAILED)
+
+
+PROVIDER_ERRORS = (anthropic.RateLimitError, anthropic.APIStatusError, anthropic.APIConnectionError)
+
+
+@router.post("/messages", response_model=AssistantReply, dependencies=[Depends(auth_routes._require_same_origin)])
+def send_message(
+    body: AssistantRequest,
+    request: Request,
+    user: UserRecord = Depends(auth_routes._require_user),
+) -> AssistantReply:
+    params = _start(body, user)
+    try:
+        response = get_client().beta.messages.create(**params)
+    except PROVIDER_ERRORS as exc:
+        raise _provider_error(exc)
 
     if response.stop_reason == "refusal":
-        return AssistantReply(
-            reply="Não posso ajudar com esse pedido. Se precisas de ajuda com segurança, dinheiro ou estudo, reformula e eu ajudo.",
-            refused=True,
-        )
+        return AssistantReply(reply=REFUSAL_TEXT, refused=True)
 
     text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text").strip()
     if response.stop_reason == "max_tokens":
-        text += "\n\n(A resposta foi cortada por ser longa. Pede-me para continuar.)"
+        text += TRUNCATED_NOTE
     if not text:
-        raise HTTPException(502, "O assistente não conseguiu responder. Tenta de novo.")
+        raise HTTPException(502, FAILED)
     return AssistantReply(reply=text, refused=False)
+
+
+def _sse(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post(
+    "/messages/stream",
+    dependencies=[Depends(auth_routes._require_same_origin)],
+    responses={200: {"content": {"text/event-stream": {}}, "description": "Eventos `delta`, `done` e `error` (Server-Sent Events)."}},
+)
+def stream_message(
+    body: AssistantRequest,
+    request: Request,
+    user: UserRecord = Depends(auth_routes._require_user),
+) -> StreamingResponse:
+    """Igual a `/messages`, mas a resposta chega aos bocados (Server-Sent Events).
+
+    Eventos: `delta` `{text}` com cada pedaço de texto; `done` `{refused, truncated}`
+    no fim; `error` `{detail}` se o fornecedor falhar a meio. Os erros antes de
+    começar (sessão, quota, fornecedor indisponível) continuam a ser respostas
+    HTTP normais. Se a pessoa cancelar, o pedido ao modelo é fechado logo.
+    """
+    params = _start(body, user)
+    # Abre a ligação ao modelo antes de responder, para os erros iniciais serem HTTP normais.
+    try:
+        manager = get_client().beta.messages.stream(**params)
+        stream = manager.__enter__()
+    except PROVIDER_ERRORS as exc:
+        raise _provider_error(exc)
+
+    def events():
+        sent = False
+        try:
+            for text in stream.text_stream:
+                if text:
+                    sent = True
+                    yield _sse("delta", {"text": text})
+            final = stream.get_final_message()
+            if final.stop_reason == "refusal":
+                yield _sse("done", {"refused": True, "truncated": False, "replacement": REFUSAL_TEXT})
+            elif not sent:
+                yield _sse("error", {"detail": FAILED})
+            else:
+                yield _sse("done", {"refused": False, "truncated": final.stop_reason == "max_tokens"})
+        except PROVIDER_ERRORS as exc:
+            _provider_error(exc)  # só regista
+            yield _sse("error", {"detail": FAILED})
+        finally:
+            manager.__exit__(None, None, None)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )

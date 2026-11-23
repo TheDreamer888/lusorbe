@@ -319,6 +319,13 @@ const pt = {
     newChat: 'Nova conversa',
     send: 'Enviar',
     sending: 'A enviar…',
+    stop: 'Parar',
+    stopped: '(Paraste a resposta aqui.)',
+    interrupted: '(A ligação falhou a meio da resposta.)',
+    truncated: '(A resposta foi cortada por ser longa. Pede-me para continuar.)',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    regenerate: 'Gerar outra vez',
     caption: 'A conversa fica só nesta página e é apagada ao fechar ou ao começar uma nova. Não escrevas palavras-passe nem dados bancários.',
     errors: {
       backInHours: (h: number) => `Volta daqui a cerca de ${h} h.`,

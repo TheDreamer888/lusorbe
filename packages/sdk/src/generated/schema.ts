@@ -327,6 +327,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assistant/messages/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stream Message
+         * @description Igual a `/messages`, mas a resposta chega aos bocados (Server-Sent Events).
+         *
+         *     Eventos: `delta` `{text}` com cada pedaço de texto; `done` `{refused, truncated}`
+         *     no fim; `error` `{detail}` se o fornecedor falhar a meio. Os erros antes de
+         *     começar (sessão, quota, fornecedor indisponível) continuam a ser respostas
+         *     HTTP normais. Se a pessoa cancelar, o pedido ao modelo é fechado logo.
+         */
+        post: operations["assistant_stream_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assistant/status": {
         parameters: {
             query?: never;
@@ -1803,6 +1828,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssistantReply"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assistant_stream_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantRequest"];
+            };
+        };
+        responses: {
+            /** @description Eventos `delta`, `done` e `error` (Server-Sent Events). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Validation Error */

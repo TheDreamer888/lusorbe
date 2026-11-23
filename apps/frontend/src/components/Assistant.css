@@ -31,4 +31,9 @@
 .rich pre code { background: none; padding: 0; white-space: pre; }
 .math-block { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .math-raw { white-space: pre-wrap; }
-@media (max-width: 560px) { .lang-select { width: 100%; } .lang-select select { flex: 1; max-width: none; } }
+@media (max-width: 560px) { .lang-select { width: 100%; } .lang-select select { flex: 1; max-width: none; } }.bubble-actions { display: flex; gap: 6px; margin-top: 10px; }
+.bubble-actions button { font: inherit; font-size: .8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; opacity: .7; cursor: pointer; }
+.bubble-actions button:hover, .bubble-actions button:focus-visible { opacity: 1; }
+.bubble.streaming::after { content: ""; display: inline-block; width: .5em; height: 1em; margin-left: 2px; vertical-align: -2px; background: currentColor; opacity: .5; animation: assistant-caret 1s steps(2) infinite; }
+@keyframes assistant-caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bubble.streaming::after { animation: none; } }

@@ -250,4 +250,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .breadcrumb { white-space: normal; min-width: 0; }
   .top-actions { gap: 10px; min-width: 0; }
   .lang-picker select { max-width: 130px; }
+}@media (max-width: 900px) {
+  .private-badge { display: none; }
+  .top-actions { gap: 12px; min-width: 0; }
+  .search-wrap input { max-width: 130px; }
 }

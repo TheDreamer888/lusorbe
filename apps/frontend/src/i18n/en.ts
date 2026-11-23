@@ -317,6 +317,13 @@ const en: Messages = {
     newChat: 'New chat',
     send: 'Send',
     sending: 'Sending…',
+    stop: 'Stop',
+    stopped: '(You stopped the reply here.)',
+    interrupted: '(The connection dropped mid-reply.)',
+    truncated: '(The reply was cut off for length. Ask me to continue.)',
+    copy: 'Copy',
+    copied: 'Copied',
+    regenerate: 'Regenerate',
     caption: 'The conversation stays on this page only and is deleted when you close it or start a new one. Do not type passwords or bank details.',
     errors: {
       backInHours: (h: number) => `Come back in about ${h} h.`,
