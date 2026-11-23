@@ -9,6 +9,7 @@ import { LanguageSelect } from './i18n'
 import { useI18n } from './i18n/context'
 import type { Messages } from './i18n/pt-PT'
 import './Workspace.css'
+import './theme-fintech.css'
 
 type View = 'overview' | 'security' | 'markets' | 'intelligence' | 'assistant' | 'plans' | 'integrations' | 'education' | 'privacy' | 'account'
 type AreaId = Exclude<View, 'account'>
@@ -57,7 +58,7 @@ function initialView(): View { const h = location.hash.slice(1).split('?')[0] ??
 function Chart({ period }: { period: string }) {
   const { m } = useI18n()
   const points = period === '1S' ? '0,120 25,126 50,104 80,115 110,82 140,98 165,90 200,108 235,58 270,69 300,45 330,58 360,30 400,36 440,12 480,26 520,6' : period === '1M' ? '0,140 35,120 65,145 95,95 130,115 170,92 200,104 235,70 270,90 310,52 350,74 390,40 440,56 480,22 520,38' : '0,145 40,148 80,130 120,138 160,106 200,116 240,88 280,100 320,64 360,79 400,43 440,53 480,25 520,15'
-  return <svg className="market-chart" viewBox="0 0 520 190" role="img" aria-label={m.overview.chartLabel(m.overview.periods[period as '1S'] ?? period)}><defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#be7754" stopOpacity=".23"/><stop offset="100%" stopColor="#be7754" stopOpacity="0"/></linearGradient></defs>{[35,80,125,170].map(y => <line key={y} x1="0" y1={y} x2="520" y2={y} stroke="#e9e5df" strokeDasharray="3 5"/>)}<polygon points={`0,190 ${points} 520,190`} fill="url(#chart-fill)"/><polyline points={points} stroke="#b56f4b" fill="none" strokeWidth="2.5" strokeLinejoin="round"/><text x="0" y="187">{m.overview.chartStart}</text><text x="520" y="187" textAnchor="end">{m.overview.chartEnd}</text></svg>
+  return <svg className="market-chart" viewBox="0 0 520 190" role="img" aria-label={m.overview.chartLabel(m.overview.periods[period as '1S'] ?? period)}><defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3d4fe0" stopOpacity=".22"/><stop offset="100%" stopColor="#3d4fe0" stopOpacity="0"/></linearGradient></defs>{[35,80,125,170].map(y => <line key={y} x1="0" y1={y} x2="520" y2={y} stroke="#e1e6ee" strokeDasharray="3 5"/>)}<polygon points={`0,190 ${points} 520,190`} fill="url(#chart-fill)"/><polyline points={points} stroke="#3d4fe0" fill="none" strokeWidth="2.5" strokeLinejoin="round"/><text x="0" y="187">{m.overview.chartStart}</text><text x="520" y="187" textAnchor="end">{m.overview.chartEnd}</text></svg>
 }
 export default function WorkspaceApp() {
   const { m, locale } = useI18n()
