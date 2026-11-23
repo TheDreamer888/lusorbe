@@ -317,6 +317,13 @@ const de: Messages = {
     newChat: 'Neue Unterhaltung',
     send: 'Senden',
     sending: 'Wird gesendet…',
+    stop: 'Stopp',
+    stopped: '(Du hast die Antwort hier gestoppt.)',
+    interrupted: '(Die Verbindung brach mitten in der Antwort ab.)',
+    truncated: '(Die Antwort wurde wegen der Länge gekürzt. Bitte mich, fortzufahren.)',
+    copy: 'Kopieren',
+    copied: 'Kopiert',
+    regenerate: 'Neu generieren',
     caption: 'Die Unterhaltung bleibt nur auf dieser Seite und wird beim Schließen oder bei einer neuen Unterhaltung gelöscht. Gib keine Passwörter oder Bankdaten ein.',
     errors: {
       backInHours: (h: number) => `Komm in etwa ${h} Std. wieder.`,

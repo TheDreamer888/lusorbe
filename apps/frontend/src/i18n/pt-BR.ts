@@ -317,6 +317,13 @@ const ptBR: Messages = {
     newChat: 'Nova conversa',
     send: 'Enviar',
     sending: 'Enviando…',
+    stop: 'Parar',
+    stopped: '(Você parou a resposta aqui.)',
+    interrupted: '(A conexão falhou no meio da resposta.)',
+    truncated: '(A resposta foi cortada por ser longa. Peça para eu continuar.)',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    regenerate: 'Gerar de novo',
     caption: 'A conversa fica só nesta página e é apagada ao fechar ou ao começar uma nova. Não escreva senhas nem dados bancários.',
     errors: {
       backInHours: (h: number) => `Volte em cerca de ${h} h.`,

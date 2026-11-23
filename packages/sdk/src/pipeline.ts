@@ -81,7 +81,8 @@ interface SendRequest {
   query?: Query | undefined
   body?: unknown
   /** `json` (por omissão) ou `blob` para downloads. */
-  responseType?: 'json' | 'blob' | undefined
+  /** stream devolve a Response com o corpo por ler (Server-Sent Events). */
+  responseType?: 'json' | 'blob' | 'stream' | undefined
   options?: OperationOptions | undefined
 }
 
@@ -153,7 +154,8 @@ export class HttpPipeline {
       if (v !== undefined && v !== '') url.searchParams.set(k, String(v))
     }
     const operation = `${req.method} ${url.pathname}`
-    const headers: Record<string, string> = { Accept: req.responseType === 'blob' ? '*/*' : 'application/json' }
+    const accept = req.responseType === 'blob' ? '*/*' : req.responseType === 'stream' ? 'text/event-stream' : 'application/json'
+    const headers: Record<string, string> = { Accept: accept }
     if (req.body !== undefined) headers['Content-Type'] = 'application/json'
     // Em browsers, um cabeçalho próprio obrigaria a um pedido CORS extra (preflight) por chamada.
     if (!isBrowser) headers['User-Agent'] = this.userAgent
@@ -199,6 +201,7 @@ export class HttpPipeline {
 
       if (res.ok) {
         if (req.responseType === 'blob') return (await res.blob()) as T
+        if (req.responseType === 'stream') return res as T
         if (res.status === 204) return undefined as T
         return (await res.json()) as T
       }

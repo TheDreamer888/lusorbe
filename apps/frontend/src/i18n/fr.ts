@@ -317,6 +317,13 @@ const fr: Messages = {
     newChat: 'Nouvelle conversation',
     send: 'Envoyer',
     sending: 'Envoi…',
+    stop: 'Arrêter',
+    stopped: '(Vous avez arrêté la réponse ici.)',
+    interrupted: '(La connexion a été coupée pendant la réponse.)',
+    truncated: '(La réponse a été tronquée car trop longue. Demandez-moi de continuer.)',
+    copy: 'Copier',
+    copied: 'Copié',
+    regenerate: 'Régénérer',
     caption: 'La conversation reste uniquement sur cette page et est effacée à la fermeture ou au début d’une nouvelle. N’écrivez pas de mots de passe ni de données bancaires.',
     errors: {
       backInHours: (h: number) => `Revenez dans environ ${h} h.`,

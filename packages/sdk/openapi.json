@@ -2337,6 +2337,47 @@
         ]
       }
     },
+    "/api/assistant/messages/stream": {
+      "post": {
+        "description": "Igual a `/messages`, mas a resposta chega aos bocados (Server-Sent Events).\n\nEventos: `delta` `{text}` com cada pedaço de texto; `done` `{refused, truncated}`\nno fim; `error` `{detail}` se o fornecedor falhar a meio. Os erros antes de\ncomeçar (sessão, quota, fornecedor indisponível) continuam a ser respostas\nHTTP normais. Se a pessoa cancelar, o pedido ao modelo é fechado logo.",
+        "operationId": "assistant_stream_message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "Eventos `delta`, `done` e `error` (Server-Sent Events)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Message",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/assistant/status": {
       "get": {
         "operationId": "assistant_status",

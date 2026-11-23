@@ -41,6 +41,39 @@ class FakeMessages:
             raise self.error
         return self.reply
 
+    # Streaming: imita `client.beta.messages.stream(...)` (gestor de contexto com text_stream).
+    chunks: list[str] = ["Verifica ", "o remetente."]
+    mid_error: Exception | None = None
+    closed: int = 0
+
+    def stream(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error:
+            raise self.error
+        fake = self
+
+        class _Stream:
+            def __init__(self):
+                self.text_stream = self._texts()
+
+            def _texts(self):
+                for i, chunk in enumerate(fake.chunks):
+                    if fake.mid_error and i == 1:
+                        raise fake.mid_error
+                    yield chunk
+
+            def get_final_message(self):
+                return fake.reply
+
+        class _Manager:
+            def __enter__(self):
+                return _Stream()
+
+            def __exit__(self, *exc):
+                fake.closed += 1
+
+        return _Manager()
+
 
 @pytest.fixture
 def fake(monkeypatch):
@@ -171,3 +204,62 @@ def test_status_lista_habilidades_e_linguas(fake):
     s = _login().get("/api/assistant/status").json()
     assert {k["id"] for k in s["skills"]} >= {"geral", "matematica", "codigo"}
     assert any(l["code"] == "en" for l in s["languages"])
+
+def _events(r) -> list[tuple[str, dict]]:
+    import json as _json
+    out = []
+    for block in r.text.strip().split("\n\n"):
+        lines = dict(line.split(": ", 1) for line in block.split("\n"))
+        out.append((lines["event"], _json.loads(lines["data"])))
+    return out
+
+
+def test_stream_envia_pedacos_e_fecha_o_pedido(fake):
+    r = _login().post("/api/assistant/messages/stream", json={**ONE, "skill": "matematica"}, headers=ORIGIN)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/event-stream")
+    assert _events(r) == [
+        ("delta", {"text": "Verifica "}),
+        ("delta", {"text": "o remetente."}),
+        ("done", {"refused": False, "truncated": False}),
+    ]
+    assert fake.calls[0]["thinking"] == {"type": "adaptive"}
+    assert fake.closed == 1
+
+
+def test_stream_recusa_no_fim(fake):
+    fake.reply = SimpleNamespace(stop_reason="refusal", content=[])
+    r = _login().post("/api/assistant/messages/stream", json=ONE, headers=ORIGIN)
+    kind, data = _events(r)[-1]
+    assert kind == "done" and data["refused"] is True and data["replacement"]
+
+
+def test_stream_erro_antes_de_comecar_e_http_normal(fake):
+    fake.error = anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
+    r = _login().post("/api/assistant/messages/stream", json=ONE, headers=ORIGIN)
+    assert r.status_code == 502
+    assert "anthropic" not in r.text.lower()
+
+
+def test_stream_erro_a_meio_vira_evento_sem_detalhes(fake):
+    fake.mid_error = anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
+    r = _login().post("/api/assistant/messages/stream", json=ONE, headers=ORIGIN)
+    events = _events(r)
+    assert events[0] == ("delta", {"text": "Verifica "})
+    assert events[-1][0] == "error"
+    assert "anthropic" not in r.text.lower()
+    assert fake.closed == 1
+
+
+def test_stream_gasta_a_mesma_quota(fake):
+    c = _login()
+    for _ in range(3):
+        assert c.post("/api/assistant/messages/stream", json=ONE, headers=ORIGIN).status_code == 200
+    r = c.post("/api/assistant/messages", json=ONE, headers=ORIGIN)
+    assert r.status_code == 429
+
+
+def test_stream_exige_sessao_e_origem(fake):
+    assert TestClient(app).post("/api/assistant/messages/stream", json=ONE, headers=ORIGIN).status_code == 401
+    assert _login().post("/api/assistant/messages/stream", json=ONE, headers={"Origin": "https://evil.example"}).status_code == 403
+    assert fake.calls == []

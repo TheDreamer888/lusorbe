@@ -60,6 +60,9 @@ export default function Assistant({ onSignIn }: { onSignIn: () => void }) {
   const [error, setError] = useState('')
   const [skill, setSkill] = useState<AssistantSkillId>('geral')
   const [language, setLanguage] = useState('')
+  // Texto da resposta que está a chegar (null quando não há nenhuma em curso).
+  const [live, setLive] = useState<string | null>(null)
+  const [copied, setCopied] = useState<number | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -75,32 +78,73 @@ export default function Assistant({ onSignIn }: { onSignIn: () => void }) {
   // Desloca só a conversa (não a página), para a caixa de texto continuar visível.
   useEffect(() => { const log = logRef.current; if (log) log.scrollTop = log.scrollHeight }, [history, busy])
 
-  const send = async (text: string) => {
-    const content = text.trim()
-    if (!content || busy || !consent) return
-    const next = trim([...history, { role: 'user', content }])
+  /** Pede a resposta em streaming para a conversa `next` (que acaba numa mensagem da pessoa). */
+  const run = async (next: ChatMessage[], restoreDraft: string | null) => {
     setHistory(next)
-    setDraft('')
     setError('')
     setBusy(true)
+    setLive('')
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    let text = ''
     try {
-      const res = await lusorbe.assistant.send({ messages: next, consent: true, skill, ...(language ? { language } : {}) }, { abortSignal: ctrl.signal })
-      setHistory(h => [...h, { role: 'assistant', content: res.reply }])
+      for await (const ev of lusorbe.assistant.stream({ messages: next, consent: true, skill, ...(language ? { language } : {}) }, { abortSignal: ctrl.signal })) {
+        if (ev.type === 'delta') { text += ev.text; setLive(text) }
+        else {
+          const final = ev.refused ? (ev.replacement ?? a.errors.failed) : ev.truncated ? `${text}\n\n${a.truncated}` : text
+          setHistory(h => [...h, { role: 'assistant', content: final }])
+        }
+      }
     } catch (err) {
-      if (ctrl.signal.aborted) return
+      if (ctrl.signal.aborted) {
+        // A pessoa parou: o que já chegou fica na conversa.
+        if (text.trim()) setHistory(h => [...h, { role: 'assistant', content: `${text}\n\n${a.stopped}` }])
+        else { setHistory(h => h.slice(0, -1)); if (restoreDraft !== null) setDraft(restoreDraft) }
+        return
+      }
       setError(friendly(err, m, isPt))
       if (err instanceof AuthenticationError) setPhase('signed-out')
-      // A mensagem não teve resposta: volta para a caixa, para não se perder.
-      setHistory(h => h.slice(0, -1))
-      setDraft(content)
+      if (text.trim()) {
+        // Falhou a meio: guarda o que chegou, para não se perder.
+        setHistory(h => [...h, { role: 'assistant', content: `${text}\n\n${a.interrupted}` }])
+      } else {
+        // Sem resposta: a mensagem volta para a caixa.
+        setHistory(h => h.slice(0, -1))
+        if (restoreDraft !== null) setDraft(restoreDraft)
+      }
     } finally {
+      setLive(null)
       setBusy(false)
+      if (abortRef.current === ctrl) abortRef.current = null
     }
   }
 
-  const reset = () => { abortRef.current?.abort(); setHistory([]); setDraft(''); setError(''); setBusy(false) }
+  const send = (text: string) => {
+    const content = text.trim()
+    if (!content || busy || !consent) return
+    setDraft('')
+    void run(trim([...history, { role: 'user', content }]), content)
+  }
+
+  /** Volta a pedir a última resposta, com a mesma pergunta. */
+  const regenerate = () => {
+    if (busy) return
+    const lastUser = history.map(x => x.role).lastIndexOf('user')
+    if (lastUser < 0) return
+    void run(history.slice(0, lastUser + 1), null)
+  }
+
+  const stop = () => abortRef.current?.abort()
+
+  const copy = async (i: number, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(i)
+      window.setTimeout(() => setCopied(c => (c === i ? null : c)), 2000)
+    } catch { /* sem acesso à área de transferência: não faz nada */ }
+  }
+
+  const reset = () => { abortRef.current?.abort(); setHistory([]); setDraft(''); setError(''); setBusy(false); setLive(null) }
 
   if (phase === 'loading') return <section className="aegis-panel assistant"><p role="status">{a.checking}</p></section>
   if (phase === 'signed-out') return (
@@ -159,22 +203,30 @@ export default function Assistant({ onSignIn }: { onSignIn: () => void }) {
               </select>
             </label>
           </div>
-          <div className="assistant-log" aria-live="polite" ref={logRef}>
+          <div className="assistant-log" aria-live="polite" aria-busy={busy} ref={logRef}>
             {history.length === 0 && (
               <div className="assistant-suggestions">
-                {(a.suggestions[skill] ?? a.suggestions['geral'] ?? []).map(s => <button key={s} onClick={() => s.endsWith('…') ? setDraft(s.slice(0, -1)) : void send(s)}>{s}</button>)}
+                {(a.suggestions[skill] ?? a.suggestions['geral'] ?? []).map(s => <button key={s} onClick={() => s.endsWith('…') ? setDraft(s.slice(0, -1)) : send(s)}>{s}</button>)}
               </div>
             )}
-            {history.map((m, i) => (
-              <div key={i} className={`bubble ${m.role}`}>
-                <span className="sr-only">{m.role === 'user' ? a.youSaid : a.replied}</span>
-                {m.role === 'assistant' ? <RichText text={m.content}/> : m.content}
+            {history.map((msg, i) => (
+              <div key={i} className={`bubble ${msg.role}`}>
+                <span className="sr-only">{msg.role === 'user' ? a.youSaid : a.replied}</span>
+                {msg.role === 'assistant' ? <RichText text={msg.content}/> : msg.content}
+                {msg.role === 'assistant' && !busy && (
+                  <div className="bubble-actions">
+                    <button type="button" onClick={() => void copy(i, msg.content)}>{copied === i ? a.copied : a.copy}</button>
+                    {i === history.length - 1 && <button type="button" onClick={regenerate}>{a.regenerate}</button>}
+                  </div>
+                )}
               </div>
             ))}
-            {busy && <div className="bubble assistant typing" role="status">{skill === 'matematica' ? a.solving : a.thinking}</div>}
+            {live !== null && (live
+              ? <div className="bubble assistant streaming"><RichText text={live}/></div>
+              : <div className="bubble assistant typing" role="status">{skill === 'matematica' ? a.solving : a.thinking}</div>)}
           </div>
           {error && <p role="alert" className="error-text">{error}</p>}
-          <form className="assistant-form" onSubmit={e => { e.preventDefault(); void send(draft) }}>
+          <form className="assistant-form" onSubmit={e => { e.preventDefault(); send(draft) }}>
             <label className="sr-only" htmlFor="assistant-input">{a.inputLabel}</label>
             <textarea
               id="assistant-input"
@@ -183,13 +235,15 @@ export default function Assistant({ onSignIn }: { onSignIn: () => void }) {
               value={draft}
               placeholder={a.placeholder}
               onChange={e => setDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(draft) } }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(draft) } }}
             />
             <div className="input-meta">
               <span>{draft.length.toLocaleString(locale)} / {MAX_CHARS.toLocaleString(locale)}</span>
               <div className="button-row">
                 <button type="button" className="button button-quiet" onClick={reset} disabled={!history.length && !draft}>{a.newChat}</button>
-                <button type="submit" className="button button-dark" disabled={busy || !draft.trim()}>{busy ? a.sending : a.send}</button>
+                {busy
+                  ? <button type="button" className="button button-outline" onClick={stop}>{a.stop}</button>
+                  : <button type="submit" className="button button-dark" disabled={!draft.trim()}>{a.send}</button>}
               </div>
             </div>
           </form>
